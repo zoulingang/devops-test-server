@@ -52,6 +52,20 @@ pytest -q
 
 测试会使用临时数据库，不影响本地 `crm.db`。
 
+## CI（Dagger）
+
+CI 流程写在 Dagger 模块里，本地和 GitHub Actions 跑的是同一条命令：
+
+```bash
+dagger call test
+```
+
+- `dagger.json`：模块声明（名字、Dagger 版本、用 Python SDK、代码在 `.dagger/`）
+- `.dagger/src/devops_test_server/main.py`：唯一的函数 `test`，把代码放进 `python:3.12-slim` 容器，`pip install -r requirements-dev.txt` 后运行 `pytest -q`
+- `.github/workflows/ci.yml`：在 PR 和 push 到 main 时运行 `dagger call test`
+
+本地运行需要先安装 [Dagger CLI](https://docs.dagger.io/install)（v0.21.11）和 Docker。
+
 ## Docker
 
 ```bash
