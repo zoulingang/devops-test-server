@@ -10,9 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Dagger CLI
+        run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin DAGGER_VERSION=0.21.11 sudo -E sh
       - name: dagger call test
-        uses: dagger/dagger-for-github@v8
-        with:
-          version: "0.21.11"
-          verb: call
-          args: test
+        run: dagger call test
