@@ -44,12 +44,17 @@ class DevopsTestServer:
         source: Annotated[dagger.Directory, DefaultPath("/"), Ignore(SOURCE_IGNORE)],
         pip_index_url: PipIndexUrl = "",
     ) -> str:
-        """在 python:3.12-slim 容器里安装依赖并运行 pytest -q。"""
+        """在 python:3.12-slim 容器里安装依赖并运行 pytest -q。
+
+        先只拷依赖清单并安装，再拷其余代码：只改代码、不改依赖时，安装这一步能命中缓存。
+        """
         return await (
             self.python(pip_index_url)
-            .with_directory("/app", source)
             .with_workdir("/app")
+            .with_file("/app/requirements.txt", source.file("requirements.txt"))
+            .with_file("/app/requirements-dev.txt", source.file("requirements-dev.txt"))
             .with_exec(["pip", "install", "--no-cache-dir", "-r", "requirements-dev.txt"])
+            .with_directory("/app", source)
             .with_exec(["pytest", "-q"])
             .stdout()
         )
