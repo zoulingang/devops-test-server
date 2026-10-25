@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,10 +11,10 @@ FIELDS = ("name", "email", "phone", "company", "notes")
 
 class CustomerIn(BaseModel):
     name: str = Field(min_length=1)
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    company: Optional[str] = None
-    notes: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    notes: str | None = None
 
 
 class Customer(CustomerIn):
@@ -32,11 +31,15 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Simple CRM", lifespan=lifespan)
 
 # No auth: allow any origin so the static frontend can call the API.
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+)
 
 
 def get_or_404(conn, customer_id: int) -> dict:
-    row = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    row = conn.execute(
+        "SELECT * FROM customers WHERE id = ?", (customer_id,)
+    ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Customer not found")
     return dict(row)

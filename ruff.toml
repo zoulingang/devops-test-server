@@ -1,0 +1,3 @@
+# Ruff = linter + formatter for Python. Run: ruff check . && ruff format --check .
+target-version = "py312"
+extend-exclude = [".dagger"]

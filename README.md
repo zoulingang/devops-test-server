@@ -57,14 +57,23 @@ pytest -q
 CI 流程写在 Dagger 模块里，本地和 GitHub Actions 跑的是同一条命令：
 
 ```bash
-dagger call test
+dagger call lint   # 静态检查：ruff check + ruff format --check
+dagger call test   # 单元测试：pytest -q
 ```
 
 - `dagger.json`：模块声明（名字、Dagger 版本、用 Python SDK、代码在 `.dagger/`）
-- `.dagger/src/devops_test_server/main.py`：唯一的函数 `test`，把代码放进 `python:3.12-slim` 容器，`pip install -r requirements-dev.txt` 后运行 `pytest -q`
-- `.github/workflows/ci.yml`：在 PR 和 push 到 main 时运行 `dagger call test`
+- `.dagger/src/devops_test_server/main.py`：两个函数。`lint` 在容器里装 ruff 做代码检查和格式检查（规则见 `ruff.toml`）；`test` 把代码放进 `python:3.12-slim` 容器，`pip install -r requirements-dev.txt` 后运行 `pytest -q`
+- `.github/workflows/ci.yml`：在 PR 和 push 到 main 时先运行 `dagger call lint`，再运行 `dagger call test`
 
 本地运行需要先安装 [Dagger CLI](https://docs.dagger.io/install)（v0.21.11）和 Docker。
+
+## 代码检查
+
+```bash
+pip install ruff==0.17.2
+ruff check .          # 加 --fix 自动修复
+ruff format .         # 自动格式化
+```
 
 ## Docker
 

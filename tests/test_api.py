@@ -19,7 +19,10 @@ def test_health(client):
 
 
 def test_crud_flow(client):
-    r = client.post("/api/customers", json={"name": "Alice", "email": "alice@example.com", "company": "Acme"})
+    r = client.post(
+        "/api/customers",
+        json={"name": "Alice", "email": "alice@example.com", "company": "Acme"},
+    )
     assert r.status_code == 201
     customer = r.json()
     assert customer["name"] == "Alice"
@@ -29,7 +32,9 @@ def test_crud_flow(client):
     r = client.get("/api/customers")
     assert [c["name"] for c in r.json()] == ["Alice"]
 
-    r = client.put(f"/api/customers/{customer['id']}", json={"name": "Alice Li", "phone": "123"})
+    r = client.put(
+        f"/api/customers/{customer['id']}", json={"name": "Alice Li", "phone": "123"}
+    )
     assert r.status_code == 200
     assert r.json()["name"] == "Alice Li"
     assert r.json()["phone"] == "123"
