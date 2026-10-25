@@ -6,11 +6,13 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Dagger CLI
         run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin DAGGER_VERSION=0.21.11 sudo -E sh
+      - name: dagger call lint
+        run: dagger call lint
       - name: dagger call test
         run: dagger call test
