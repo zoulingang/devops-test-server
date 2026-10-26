@@ -70,6 +70,19 @@ dagger call -m github.com/zoulingang/devops-test-web@main end-to-end-report --se
 - `.dagger/src/devops_test_server/main.py`：两个函数。`lint` 在容器里装 ruff 做代码检查和格式检查（规则见 `ruff.toml`）；`test` 把代码放进 `python:3.12-slim` 容器，`pip install -r requirements-dev.txt` 后运行 `pytest -q`
 - `.github/workflows/ci.yml`：在 PR 和 push 到 main 时运行三个并行的 job：`lint`、`test`、`end-to-end`，在 PR 页面上各自显示为一个检查。`end-to-end` 用前端仓库 main 分支的 Dagger 模块（`-m`），以本 PR 的后端代码（`--server=.`，用本仓库的 Dockerfile 构建）跑浏览器 E2E，所以后端改坏了接口或 Dockerfile，在后端 PR 上就会变红。报告和截图上传为 artifact `playwright-report`（测试失败也上传），在运行页面底部的 Artifacts 区下载
 
+### E2E 测试用例在哪里
+
+本仓库没有 E2E 用例，这是有意的：用例只有一份，在前端仓库的 [`e2e/customers.spec.js`](https://github.com/zoulingang/devops-test-web/blob/main/e2e/customers.spec.js)。E2E 测的是「浏览器打开页面 → 点按钮 → 前端调后端 API → 页面显示结果」这条完整链路，要用到前端的页面、Playwright 配置和 npm 依赖，所以放在前端仓库。在后端再复制一份，两份很快就会不一致。
+
+后端 CI 通过 `-m` 加载前端仓库 main 分支的 Dagger 模块，再用 `--server=.` 把当前后端代码传进去：
+
+| 在哪个仓库的 PR 上跑 | 前端代码 | 后端代码 |
+| --- | --- | --- |
+| devops-test-web | 这个 PR | devops-test-server 的 main |
+| devops-test-server | devops-test-web 的 main | 这个 PR |
+
+两边用同一份用例，各自测自己的改动。需要前后端一起改的接口变更，要么保持向后兼容，要么临时把 `ci.yml` 里的 `WEB_MODULE` 指向前端的对应分支。只测 API、不需要浏览器的测试写在本仓库的 `tests/`，用 pytest。
+
 本地运行需要先安装 [Dagger CLI](https://docs.dagger.io/install)（v0.21.11）和 Docker。
 
 在国内网络下访问 PyPI 很慢，可以给 `lint` / `test` 传一个镜像源（不传就用官方 PyPI，GitHub Actions 上就是不传）：
