@@ -5,8 +5,10 @@ on:
   push:
     branches: [main]
 
+# 三个 job 并行运行，在 PR 页面上各自显示为一个检查：lint、test、end-to-end。
+# 每个 job 是一台新的 runner，各自安装 Dagger CLI。
 jobs:
-  ci:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,5 +16,38 @@ jobs:
         run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin DAGGER_VERSION=0.21.11 sudo -E sh
       - name: dagger call lint
         run: dagger call lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dagger CLI
+        run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin DAGGER_VERSION=0.21.11 sudo -E sh
       - name: dagger call test
         run: dagger call test
+
+  # E2E 用例和 Playwright 配置都在前端仓库，这里直接调用前端仓库 main 分支的 Dagger 模块（-m），
+  # 用 --server=. 把本 PR 的后端代码传进去：用本仓库的 Dockerfile 构建后端，再跑浏览器里的增改删用例。
+  # 这样后端改坏了接口或 Dockerfile，在后端 PR 上就会变红。
+  end-to-end:
+    runs-on: ubuntu-latest
+    env:
+      WEB_MODULE: github.com/zoulingang/devops-test-web@main
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dagger CLI
+        run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin DAGGER_VERSION=0.21.11 sudo -E sh
+      # 先导出报告：测试失败时这一步也成功，保证报告和截图一定能拿到。
+      # 报告导出到仓库目录之外（runner.temp），否则下一步 --server=. 的内容变了，缓存失效会重跑测试
+      - name: dagger call end-to-end-report
+        run: dagger call -m "$WEB_MODULE" end-to-end-report --server=. export --path="$RUNNER_TEMP/playwright-report"
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: ${{ runner.temp }}/playwright-report/
+          retention-days: 14
+      # 再判定结果：和上一步输入相同，Dagger 命中缓存不会重跑测试；有用例失败时这一步变红
+      - name: dagger call end-to-end
+        run: dagger call -m "$WEB_MODULE" end-to-end --server=.
