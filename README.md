@@ -59,11 +59,16 @@ CI 流程写在 Dagger 模块里，本地和 GitHub Actions 跑的是同一条�
 ```bash
 dagger call lint   # 静态检查：ruff check + ruff format --check
 dagger call test   # 单元测试：pytest -q
+
+# 端到端（E2E）测试：用例在前端仓库，这里调用前端仓库的 Dagger 模块，把当前目录的后端代码传进去
+dagger call -m github.com/zoulingang/devops-test-web@main end-to-end --server=.
+# 同上，并把带截图的 HTML 报告导出到 /tmp/playwright-report
+dagger call -m github.com/zoulingang/devops-test-web@main end-to-end-report --server=. export --path=/tmp/playwright-report
 ```
 
 - `dagger.json`：模块声明（名字、Dagger 版本、用 Python SDK、代码在 `.dagger/`）
 - `.dagger/src/devops_test_server/main.py`：两个函数。`lint` 在容器里装 ruff 做代码检查和格式检查（规则见 `ruff.toml`）；`test` 把代码放进 `python:3.12-slim` 容器，`pip install -r requirements-dev.txt` 后运行 `pytest -q`
-- `.github/workflows/ci.yml`：在 PR 和 push 到 main 时先运行 `dagger call lint`，再运行 `dagger call test`
+- `.github/workflows/ci.yml`：在 PR 和 push 到 main 时运行三个并行的 job：`lint`、`test`、`end-to-end`，在 PR 页面上各自显示为一个检查。`end-to-end` 用前端仓库 main 分支的 Dagger 模块（`-m`），以本 PR 的后端代码（`--server=.`，用本仓库的 Dockerfile 构建）跑浏览器 E2E，所以后端改坏了接口或 Dockerfile，在后端 PR 上就会变红。报告和截图上传为 artifact `playwright-report`（测试失败也上传），在运行页面底部的 Artifacts 区下载
 
 本地运行需要先安装 [Dagger CLI](https://docs.dagger.io/install)（v0.21.11）和 Docker。
 
