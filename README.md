@@ -69,6 +69,7 @@ dagger call -m github.com/zoulingang/devops-test-web@main end-to-end-report --se
 - `dagger.json`：模块声明（名字、Dagger 版本、用 Python SDK、代码在 `.dagger/`）
 - `.dagger/src/devops_test_server/main.py`：两个函数。`lint` 在容器里装 ruff 做代码检查和格式检查（规则见 `ruff.toml`）；`test` 把代码放进 `python:3.12-slim` 容器，`pip install -r requirements-dev.txt` 后运行 `pytest -q`
 - `.github/workflows/ci.yml`：在 PR 和 push 到 main 时运行三个并行的 job：`lint`、`test`、`end-to-end`，在 PR 页面上各自显示为一个检查。`end-to-end` 用前端仓库 main 分支的 Dagger 模块（`-m`），以本 PR 的后端代码（`--server=.`，用本仓库的 Dockerfile 构建）跑浏览器 E2E，所以后端改坏了接口或 Dockerfile，在后端 PR 上就会变红。报告和截图上传为 artifact `playwright-report`（测试失败也上传），在运行页面底部的 Artifacts 区下载
+- `Jenkinsfile`：迁移到 Jenkins 用的声明式流水线，跑同样的三个 Dagger 命令（并行），`end-to-end` 的报告不论成败都归档为构建产物。Jenkins agent 需要的前提（Docker、curl、外网）写在文件开头的注释里。Jenkins 跑通之前 `ci.yml` 继续保留
 
 ### E2E 测试用例在哪里
 
@@ -81,7 +82,7 @@ dagger call -m github.com/zoulingang/devops-test-web@main end-to-end-report --se
 | devops-test-web | 这个 PR | devops-test-server 的 main |
 | devops-test-server | devops-test-web 的 main | 这个 PR |
 
-两边用同一份用例，各自测自己的改动。需要前后端一起改的接口变更，要么保持向后兼容，要么临时把 `ci.yml` 里的 `WEB_MODULE` 指向前端的对应分支。只测 API、不需要浏览器的测试写在本仓库的 `tests/`，用 pytest。
+两边用同一份用例，各自测自己的改动。需要前后端一起改的接口变更，要么保持向后兼容，要么临时把 `ci.yml` 和 `Jenkinsfile` 里的 `WEB_MODULE` 指向前端的对应分支。只测 API、不需要浏览器的测试写在本仓库的 `tests/`，用 pytest。
 
 本地运行需要先安装 [Dagger CLI](https://docs.dagger.io/install)（v0.21.11）和 Docker。
 
