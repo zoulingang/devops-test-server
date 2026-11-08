@@ -44,15 +44,17 @@ dagger call -m github.com/zoulingang/devops-test-web@main end-to-end --server=.
 
 - 本仓库**没有** E2E 用例。用例只有一份，在前端仓库的 `e2e/customers.spec.js`。
 - 本仓库 CI 的 `end-to-end` job 调用前端仓库 main 分支的 Dagger 模块，用 `--server=.` 传入当前后端代码，并用本仓库的 `Dockerfile` 构建后端。
-- 所以接口不兼容的改动会让 E2E 失败。需要前后端一起改时，要么保持向后兼容，要么临时把 `.github/workflows/ci.yml` 里的 `WEB_MODULE` 指向前端的对应分支。
+- 所以接口不兼容的改动会让 E2E 失败。需要前后端一起改时，要么保持向后兼容，要么临时把 `.github/workflows/ci.yml` 和 `Jenkinsfile` 里的 `WEB_MODULE` 指向前端的对应分支。
 - 只测 API、不需要浏览器的测试写在本仓库 `tests/`，用 pytest。
 
 ## CI 和 Dagger
 
 - `.github/workflows/ci.yml` 有三个并行 job：`lint`、`test`、`end-to-end`，在 PR 上各自显示为一个检查。
+- 正在迁移到 Jenkins：根目录 `Jenkinsfile`（声明式流水线）跑同样的 Dagger 命令，`lint`、`test`、`end-to-end` 三个阶段并行，`end-to-end` 不论成败都用 `archiveArtifacts` 归档 `playwright-report/`。Seth 确认 Jenkins 跑通之前保留 `ci.yml`，两边改动要同步。
+- Jenkins agent 的前提写在 `Jenkinsfile` 开头的注释里：装有 Docker 且 Jenkins 用户能执行 `docker`，有 curl，能访问 dl.dagger.io、github.com 等外网。Dagger CLI 由流水线自己装到 `$WORKSPACE_TMP/bin`；E2E 报告也先导出到 `$WORKSPACE_TMP`，两次 `dagger call` 都结束后才拷回工作区归档。工作区里多出文件会改变 `--server=.` 的内容，导致缓存失效重跑测试。
 - Dagger 模块在 `.dagger/src/devops_test_server/main.py`。函数名不要带数字（Dagger CLI 会把 `e2e` 变成 `e-2-e`）。
 - 安装依赖的步骤放在拷贝源码之前，这样只改代码时能命中缓存。新增函数时保持这个顺序。
-- Dagger 版本 0.21.11 同时写在 `dagger.json` 和 `ci.yml` 里，升级时一起改。
+- Dagger 版本 0.21.11 同时写在 `dagger.json`、`ci.yml` 和 `Jenkinsfile` 里，升级时一起改。
 - `--pip-index-url` 参数只是为国内网络准备的，CI 里不要传。
 
 ## 约定
